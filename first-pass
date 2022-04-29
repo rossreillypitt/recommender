@@ -1,0 +1,88 @@
+import unicodedata
+import pandas as pd
+import json
+import sys
+import requests
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+import re
+from collections import Counter
+from bs4 import BeautifulSoup
+
+raw_data = []
+response = requests.get("https://data.wprdc.org/data.json")
+raw_data.append(json.loads(response.content))
+
+raw_data_dict = raw_data[0]
+raw_data_pd = pd.DataFrame.from_dict(raw_data_dict)
+
+staging_list = []
+
+for n in range(len(raw_data_pd)):
+    staging_dict = {}
+    staging_dict['title'] = raw_data_pd.loc[n]["dataset"]["title"]
+    staging_dict.update({'description' : raw_data_pd.loc[n]["dataset"]["description"]})
+    try:
+        staging_dict.update({'keyword' : raw_data_pd.loc[n]["dataset"]["keyword"]})
+    except KeyError: 
+        pass
+    staging_list.append(staging_dict)
+
+data_df = pd.DataFrame(staging_list)
+
+data_df.sort_values(by=['title'])
+data_sorted = data_df.sort_values(by=['title'])
+data_sorted = data_sorted.reset_index(drop=True)
+
+sorted_desc = []
+for n in range(len(data_sorted)):
+    soup=BeautifulSoup(data_sorted.loc[n]["description"], 'html.parser')
+    text = soup.get_text()
+    text = text.replace("\n", "")
+    text = text.replace("\r", " ")
+    text = unicodedata.normalize('NFKD', text)
+    sorted_desc.append(text)
+
+sorted_keywords = []
+for n in range(len(data_sorted)):
+    try:
+        sorted_keywords.append(' '.join(data_sorted.loc[n]["keyword"]))
+    except TypeError: 
+        pass
+
+tfidf = TfidfVectorizer(stop_words="english", max_df=.9)
+tfidfmatrix = tfidf.fit_transform(sorted_desc)
+cosine_sim = cosine_similarity(tfidfmatrix, tfidfmatrix)
+
+count = CountVectorizer(max_df = .9, stop_words="english")
+count_matrix = count.fit_transform(sorted_desc)
+cosine_sim2 = cosine_similarity(count_matrix, count_matrix)
+
+tfidf2 = TfidfVectorizer(stop_words="english", max_df=.9)
+tfidfmatrix2 = tfidf2.fit_transform(sorted_keywords)
+cosine_sim3 = cosine_similarity(tfidfmatrix2, tfidfmatrix2)
+
+count2 = CountVectorizer(max_df = .9, stop_words="english")
+count_matrix2 = count2.fit_transform(sorted_keywords)
+cosine_sim4 = cosine_similarity(count_matrix2, count_matrix2)
+
+print("Title: ", data_sorted.loc[15]["title"])
+print("Keywords: ", data_sorted.loc[15]["keyword"])
+print("Description: ", data_sorted.loc[15]["description"])
+new_array = cosine_sim3[15]
+final_array = np.argsort(new_array[::-1])
+new_array2 = cosine_sim4[15]
+final_array2 = np.argsort(new_array2[::-1])
+
+print("\nTFIDF")
+for n in range(10):
+    print(data_sorted.loc[final_array[n]]["title"])
+
+print("\nCount")
+for n in range(10):
+    print(data_sorted.loc[final_array2[n]]["title"])
+print("\n")
+for n in final_array[:10]:
+    if n in final_array2[:10]:
+        print(n, data_sorted.loc[final_array[n]]["title"])
