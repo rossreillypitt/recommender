@@ -19,6 +19,7 @@ selected_dataset = 15
 # this is just to make it run for now. The number is 
 # the index of a dataset in the list that's returned by
 # the vectorizers. You can change this to test another dataset's recs.
+# for now, can be any int from  - 329 inclusive. 
 
 # pulls data from site, puts it in a dataframe
 raw_data = []
@@ -60,7 +61,7 @@ for n in range(len(data_sorted)):
     try:
         sorted_keywords.append(' '.join(data_sorted.loc[n]["keyword"]))
     except TypeError: 
-        pass
+        sorted_keywords.append(' ')
 
 # initializes tfidf vectorizer for descriptions and performs cosine similarity
 tfidf = TfidfVectorizer(stop_words="english", max_df=.9)
