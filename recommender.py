@@ -61,7 +61,7 @@ for n in range(len(data_sorted)):
     try:
         sorted_keywords.append(' '.join(data_sorted.loc[n]["keyword"]))
     except TypeError: 
-        sorted_keywords.append(' ')
+        sorted_keywords.append('')
 
 # initializes tfidf vectorizer for descriptions and performs cosine similarity
 tfidf = TfidfVectorizer(stop_words="english", max_df=.9)
