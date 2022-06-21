@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import unicodedata
 import pandas as pd
 import json
@@ -14,8 +8,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from bs4 import BeautifulSoup
 import numpy as np
+import math
 
-selected_dataset = 15 
+if sys.argv < 2:
+    sys.argv = ["recommender.py", 42]
+
+selected_dataset = sys.argv[1]
+print(selected_dataset)
 # this is just to make it run for now. The number is 
 # the index of a dataset in the list that's returned by
 # the vectorizers. You can change this to test another dataset's recs.
@@ -45,6 +44,16 @@ data_df = pd.DataFrame(staging_list)
 data_sorted = data_df.sort_values(by=['title'])
 data_sorted = data_sorted.reset_index(drop=True)
 
+#removes technical keywords that were intended for internal use only 
+for item in data_sorted["keyword"]:
+    try:
+        if "_etl" in item:
+            item.remove("_etl")
+        if "_jupyter" in item:
+            item.remove("_jupyter")
+    except TypeError:
+        pass
+
 # removes html, python escape characters, unicode from descriptions, 
 sorted_desc = []
 for n in range(len(data_sorted)):
@@ -63,6 +72,19 @@ for n in range(len(data_sorted)):
     except TypeError: 
         sorted_keywords.append('')
 
+sorted_title_str = []
+for item in data_sorted["title"]:
+    sorted_title_str.append(item)
+
+#the following code is a bit circular. This is mostly for future use -- 
+#it puts the selected dataset in the form of a string because I assume
+#that'll be what is grabbed from the site when this is used. It then finds
+#the index of the dataset with the same title. This will likely have to be tweaked.
+selected_dataset = data_sorted.loc[selected_dataset]["title"]
+for x in range(len(data_sorted["title"])):
+    if selected_dataset == data_sorted.loc[x]["title"]:
+        selected_dataset = x
+        
 # initializes tfidf vectorizer for descriptions and performs cosine similarity
 tfidf = TfidfVectorizer(stop_words="english", max_df=.9)
 tfidfmatrix = tfidf.fit_transform(sorted_desc)
@@ -85,13 +107,13 @@ cosine_sim4 = cosine_similarity(count_matrix2, count_matrix2)
 
 # grabs result of cosine similarity for selected dataset, places results in new array, sorts it
 new_array = cosine_sim[selected_dataset]
-final_array = np.argsort(new_array[::-1])
+final_array = np.argsort(new_array)[::-1]
 new_array2 = cosine_sim2[selected_dataset]
-final_array2 = np.argsort(new_array2[::-1])
+final_array2 = np.argsort(new_array2)[::-1]
 new_array3 = cosine_sim3[selected_dataset]
-final_array3 = np.argsort(new_array3[::-1])
+final_array3 = np.argsort(new_array3)[::-1]
 new_array4 = cosine_sim4[selected_dataset]
-final_array4 = np.argsort(new_array4[::-1])
+final_array4 = np.argsort(new_array4)[::-1]
 
 # everything from here to the end is output related.
 # mostly, it's temporary and just to check work/compare vectorizer results. 
@@ -102,29 +124,41 @@ print("Title: ", data_sorted.loc[selected_dataset]["title"])
 print("Keywords: ", data_sorted.loc[selected_dataset]["keyword"])
 print("Description: ", data_sorted.loc[selected_dataset]["description"])
 
+
+def recommendation_list(final_array, new_array):
+    x = 0
+    list_x = []
+    while len(list_x) < 5: 
+        if final_array[x] == selected_dataset:
+            x += 1
+        else: 
+            list_x.append([final_array[x], data_sorted.loc[final_array[x]]["title"], f'-- Score: {round(new_array[final_array[x]], 3)}'])
+            x += 1
+    for item in list_x:
+        print(item[0], item[1], item[2])
+    return list_x
+        
 print("\nTFIDF -- Description")
-for n in range(5):
-    print(final_array[n], data_sorted.loc[final_array[n]]["title"])
+tfidf_desc = recommendation_list(final_array, new_array)
     
 print("\nCount -- Description")
-for n in range(5):
-    print(final_array2[n], data_sorted.loc[final_array2[n]]["title"])
+count_desc = recommendation_list(final_array2, new_array2)
+    
 
 print("\nDatasets in both desc. recommender results")
-for n in final_array[:5]:
-    if n in final_array2[:5]:
-        print(n, data_sorted.loc[n]["title"])
+for item_a in tfidf_desc:
+    for item_b in count_desc:
+        if item_a[1] == item_b[1]:
+            print(item_a[0], item_a[1])
 
 print("\nTFIDF -- Keywords")
-for n in range(5):
-    print(final_array3[n], data_sorted.loc[final_array3[n]]["title"])
+tfidf_keyw = recommendation_list(final_array3, new_array3)
 
 print("\nCount -- Keywords")
-for n in range(5):
-    print(final_array4[n], data_sorted.loc[final_array4[n]]["title"])
+count_keyw = recommendation_list(final_array4, new_array4)
 
 print("\nDatasets in both keyword recommender results")
-for n in final_array3[:5]:
-    if n in final_array4[:5]:
-        print(n, data_sorted.loc[n]["title"])
-
+for item_a in tfidf_keyw:
+    for item_b in count_keyw:
+        if item_a[1] == item_b[1]:
+            print(item_a[0], item_a[1])
