@@ -1,7 +1,7 @@
 import unicodedata
 import pandas as pd
 import json
-import sys #left in for now, will likely need eventually if the next step is cli
+import sys 
 import requests
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -10,12 +10,10 @@ from sklearn.compose import ColumnTransformer
 from bs4 import BeautifulSoup
 import numpy as np
 import math
+import random
 
-#if len(sys.argv) < 2:
-sys.argv = ["recommender.py", 81]
-
-selected_dataset = sys.argv[1]
-print(selected_dataset)
+selected_dataset = random.randint(0,327)
+print(f'Dataset Number: {selected_dataset}')
 # this is just to make it run for now. The number is 
 # the index of a dataset in the list that's returned by
 # the vectorizers. You can change this to test another dataset's recs.
